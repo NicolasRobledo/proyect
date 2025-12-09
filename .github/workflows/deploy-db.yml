@@ -5,7 +5,7 @@ on:
     branches: [main]
     paths:
       - 'database/migrations/**'
-  workflow_dispatch:  # Permite ejecutar manualmente
+  workflow_dispatch:
 
 jobs:
   migrate:
@@ -15,43 +15,12 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Copy files to VPS
-        uses: appleboy/scp-action@v0.1.7
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          password: ${{ secrets.VPS_PASSWORD }}
-          source: "database/migrations/*,docker-compose.yml"
-          target: "/root/proyecto-pime"
-
-      - name: Start MySQL and run migrations
-        uses: appleboy/ssh-action@v1
-        with:
-          host: ${{ secrets.VPS_HOST }}
-          username: ${{ secrets.VPS_USER }}
-          password: ${{ secrets.VPS_PASSWORD }}
-          script: |
-            cd /root/proyecto-pime
-
-            # Crear archivo .env si no existe
-            if [ ! -f .env ]; then
-              echo "MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }}" > .env
-              echo "MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }}" >> .env
-            fi
-
-            # Levantar solo MySQL si no está corriendo
-            docker compose up -d mysql
-
-            # Esperar a que MySQL esté listo
-            echo "Esperando a que MySQL esté listo..."
-            sleep 15
-
-            # Ejecutar migraciones con Flyway
-            docker run --rm \
-              --network proyecto-pime_default \
-              -v /root/proyecto-pime/database/migrations:/flyway/sql \
-              flyway/flyway \
-              -url="jdbc:mysql://mysql:3306/${{ secrets.MYSQL_DATABASE }}?allowPublicKeyRetrieval=true&useSSL=false" \
-              -user=root \
-              -password=${{ secrets.MYSQL_ROOT_PASSWORD }} \
-              migrate
+      - name: Run Flyway migrations
+        run: |
+          docker run --rm \
+            -v ${{ github.workspace }}/database/migrations:/flyway/sql \
+            flyway/flyway \
+            -url="jdbc:mysql://${{ secrets.VPS_HOST }}:3306/${{ secrets.MYSQL_DATABASE }}?allowPublicKeyRetrieval=true&useSSL=false" \
+            -user=root \
+            -password=${{ secrets.MYSQL_ROOT_PASSWORD }} \
+            migrate
