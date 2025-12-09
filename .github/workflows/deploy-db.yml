@@ -1,0 +1,40 @@
+name: Deploy Database Migrations
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'database/migrations/**'
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Copy migrations to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          source: "database/migrations/*"
+          target: "/root/migrations"
+
+      - name: Run Flyway migrations
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+            docker run --rm \
+              --network proyecto-pime_default \
+              -v /root/migrations/database/migrations:/flyway/sql \
+              flyway/flyway \
+              -url="jdbc:mysql://mysql:3306/${{ secrets.MYSQL_DATABASE }}?allowPublicKeyRetrieval=true&useSSL=false" \
+              -user=root \
+              -password=${{ secrets.MYSQL_ROOT_PASSWORD }} \
+              migrate
