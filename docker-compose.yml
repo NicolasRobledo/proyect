@@ -2,15 +2,19 @@ services:
   mysql:
     image: mysql:8
     container_name: mysql
+    networks:
+      - app-network
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
     ports:
-      - "3306:3306"
+      - "127.0.0.1:3306:3306"
 
   app:
     build: ./backend
     container_name: spring-app
+    networks:
+      - app-network
     depends_on:
       - mysql
     ports:
@@ -19,3 +23,8 @@ services:
       SPRING_DATASOURCE_URL: jdbc:mysql://mysql:3306/${MYSQL_DATABASE}?allowPublicKeyRetrieval=true&useSSL=false
       SPRING_DATASOURCE_USERNAME: root
       SPRING_DATASOURCE_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+
+networks:
+  app-network:
+    name: app-network
+    driver: bridge
