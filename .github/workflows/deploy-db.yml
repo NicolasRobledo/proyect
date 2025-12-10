@@ -34,22 +34,22 @@ jobs:
             # Crear red si no existe
             docker network create app-network 2>/dev/null || true
 
-            # Crear contenedor MySQL si no existe
-            if ! docker ps -a --format '{{.Names}}' | grep -q '^mysql$'; then
-              docker run -d \
-                --name mysql \
-                --network app-network \
-                -e MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }} \
-                -e MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }} \
-                -p 127.0.0.1:3306:3306 \
-                --health-cmd="mysqladmin ping -h localhost" \
-                --health-interval=5s \
-                --health-timeout=3s \
-                --health-retries=10 \
-                mysql:8
-            else
-              docker start mysql 2>/dev/null || true
-            fi
+            # Eliminar contenedor MySQL viejo si existe (para recrearlo con healthcheck)
+            docker rm -f mysql 2>/dev/null || true
+
+            # Crear contenedor MySQL con healthcheck
+            docker run -d \
+              --name mysql \
+              --network app-network \
+              -e MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }} \
+              -e MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }} \
+              -p 127.0.0.1:3306:3306 \
+              -v mysql_data:/var/lib/mysql \
+              --health-cmd="mysqladmin ping -h localhost" \
+              --health-interval=5s \
+              --health-timeout=3s \
+              --health-retries=30 \
+              mysql:8
 
             # Esperar a que MySQL esté healthy
             until [ "$(docker inspect -f '{{.State.Health.Status}}' mysql)" = "healthy" ]; do
