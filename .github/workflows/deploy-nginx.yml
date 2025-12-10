@@ -31,19 +31,19 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
-            # Crear red si no existe
-            docker network create app-network 2>/dev/null || true
+            # Crear red pública si no existe
+            docker network create public-network 2>/dev/null || true
 
             # Detener y eliminar nginx viejo
             docker rm -f nginx 2>/dev/null || true
 
             # Conectar frontend a la red si no está
-            docker network connect app-network frontend 2>/dev/null || true
+            docker network connect public-network frontend 2>/dev/null || true
 
             # Iniciar nginx
             docker run -d \
               --name nginx \
-              --network app-network \
+              --network public-network \
               --restart unless-stopped \
               -p 80:80 \
               -v /root/proyecto-pime/nginx/nginx.conf:/etc/nginx/nginx.conf:ro \

@@ -33,8 +33,8 @@ jobs:
           script: |
             cd /root/proyecto-pime
 
-            # Crear red si no existe
-            docker network create app-network 2>/dev/null || true
+            # Crear red pública si no existe
+            docker network create public-network 2>/dev/null || true
 
             # Construir imagen del frontend
             docker build -t proyecto-pime-frontend ./frontend
@@ -42,12 +42,11 @@ jobs:
             # Detener y eliminar contenedor viejo
             docker rm -f frontend 2>/dev/null || true
 
-            # Iniciar contenedor frontend en la red app-network
+            # Iniciar contenedor frontend en la red pública
             docker run -d \
               --name frontend \
-              --network app-network \
+              --network public-network \
               --restart unless-stopped \
-              -p 3000:3000 \
               proyecto-pime-frontend
 
-            echo "Frontend desplegado en puerto 3000"
+            echo "Frontend desplegado"

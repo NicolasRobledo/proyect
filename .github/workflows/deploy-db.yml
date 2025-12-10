@@ -31,8 +31,8 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
-            # Crear red si no existe
-            docker network create app-network 2>/dev/null || true
+            # Crear red de base de datos si no existe
+            docker network create db-network 2>/dev/null || true
 
             # Eliminar contenedor MySQL viejo si existe (para recrearlo con healthcheck)
             docker rm -f mysql 2>/dev/null || true
@@ -40,10 +40,9 @@ jobs:
             # Crear contenedor MySQL con healthcheck
             docker run -d \
               --name mysql \
-              --network app-network \
+              --network db-network \
               -e MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }} \
               -e MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }} \
-              -p 127.0.0.1:3306:3306 \
               -v mysql_data:/var/lib/mysql \
               --health-cmd="mysqladmin ping -h localhost" \
               --health-interval=5s \
@@ -59,7 +58,7 @@ jobs:
 
             # Ejecutar Flyway (contenedor temporal)
             docker run --rm \
-              --network app-network \
+              --network db-network \
               -v /root/proyecto-pime/database/migrations:/flyway/sql \
               flyway/flyway \
               -url="jdbc:mysql://mysql:3306/${{ secrets.MYSQL_DATABASE }}?allowPublicKeyRetrieval=true&useSSL=false" \
