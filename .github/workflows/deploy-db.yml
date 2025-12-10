@@ -31,11 +31,38 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
+            # Crear red si no existe
+            docker network create app-network 2>/dev/null || true
+
+            # Crear contenedor MySQL si no existe
+            if ! docker ps -a --format '{{.Names}}' | grep -q '^mysql$'; then
+              docker run -d \
+                --name mysql \
+                --network app-network \
+                -e MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }} \
+                -e MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }} \
+                -p 127.0.0.1:3306:3306 \
+                --health-cmd="mysqladmin ping -h localhost" \
+                --health-interval=5s \
+                --health-timeout=3s \
+                --health-retries=10 \
+                mysql:8
+            else
+              docker start mysql 2>/dev/null || true
+            fi
+
+            # Esperar a que MySQL esté healthy
+            until [ "$(docker inspect -f '{{.State.Health.Status}}' mysql)" = "healthy" ]; do
+              echo "Esperando MySQL..."
+              sleep 2
+            done
+
+            # Ejecutar Flyway (contenedor temporal)
             docker run --rm \
               --network app-network \
               -v /root/proyecto-pime/database/migrations:/flyway/sql \
               flyway/flyway \
               -url="jdbc:mysql://mysql:3306/${{ secrets.MYSQL_DATABASE }}?allowPublicKeyRetrieval=true&useSSL=false" \
               -user=root \
-              -password=${{ secrets.MYSQL_ROOT_PASSWORD }} \
+              -password="${{ secrets.MYSQL_ROOT_PASSWORD }}" \
               migrate
