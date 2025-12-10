@@ -1,0 +1,49 @@
+name: Deploy Frontend
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/**'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Copy frontend to VPS
+        uses: appleboy/scp-action@v0.1.7
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          source: "frontend/*"
+          target: "/root/proyecto-pime"
+
+      - name: Build and deploy frontend on VPS
+        uses: appleboy/ssh-action@v1
+        with:
+          host: ${{ secrets.VPS_HOST }}
+          username: ${{ secrets.VPS_USER }}
+          password: ${{ secrets.VPS_PASSWORD }}
+          script: |
+            cd /root/proyecto-pime
+
+            # Construir imagen del frontend
+            docker build -t proyecto-pime-frontend ./frontend
+
+            # Detener y eliminar contenedor viejo
+            docker rm -f frontend 2>/dev/null || true
+
+            # Iniciar contenedor frontend expuesto en puerto 3000
+            docker run -d \
+              --name frontend \
+              --restart unless-stopped \
+              -p 3000:3000 \
+              proyecto-pime-frontend
+
+            echo "Frontend desplegado en puerto 3000"
