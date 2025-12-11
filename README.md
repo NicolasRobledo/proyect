@@ -2,33 +2,70 @@
 
 Aplicación de microservicios con frontend (Astro), backend (Spring Boot), base de datos (MySQL) y proxy reverso (Nginx).
 
-## Inicio Rápido
+---
 
-### Prerrequisitos
-- Docker y Docker Compose instalados.
+## Guía para Desarrolladores
 
-### Ejecutar la aplicación
-1. Clona el repositorio:
-   ```
+### Cómo trabajar
+
+1. **Clonar el repositorio**
+   ```bash
    git clone https://github.com/NicolasRobledo/proyect.git
    cd proyect
    ```
 
-2. Crea un archivo `.env` con las variables necesarias (ej. GOOGLE_CLIENT_ID, MYSQL_ROOT_PASSWORD).
+2. **Hacer cambios en el código**
 
-3. Construye y ejecuta los contenedores:
+3. **Subir cambios**
+   ```bash
+   git add .
+   git commit -m "descripción del cambio"
+   git push origin main
    ```
-   docker-compose up --build
-   ```
 
-4. Accede a la app en `http://localhost` (o el dominio configurado).
+4. **Listo** - El deploy es automático
 
-### Despliegue
-- Push a la rama `main` activa el workflow de GitHub Actions para despliegue automático.
+### Qué pasa cuando haces push
 
-# Arquitectura del Sistema
+| Si modificas... | Se despliega automáticamente... |
+|-----------------|--------------------------------|
+| `frontend/**` | Frontend (Astro) |
+| `backend/**` | Backend (Spring Boot) |
+| `nginx/**` | Nginx (proxy) |
+| `database/migrations/**` | Migraciones de BD |
 
-## Diagrama de Red
+> Los secretos (credenciales de Google, BD, VPS, etc.) ya están configurados en GitHub. No necesitas configurar nada local para desplegar.
+
+### Ver estado del deploy
+
+1. Ve a GitHub → **Actions**
+2. Busca el workflow que se ejecutó
+3. Verde = éxito, Rojo = error
+
+### Agregar nueva migración de BD
+
+1. Crear archivo en `database/migrations/`
+2. Nombre: `V{numero}__descripcion.sql` (ej: `V2__add_productos.sql`)
+3. Push y se ejecuta automáticamente
+
+---
+
+## Estructura del Proyecto
+
+```
+proyecto-pime/
+├── backend/          # API Spring Boot (Java 21)
+├── frontend/         # Web Astro + React
+├── nginx/            # Configuración del proxy
+├── database/         # Migraciones SQL (Flyway)
+└── .github/workflows # Pipelines de deploy automático
+```
+
+---
+
+## Arquitectura del Sistema
+
+### Diagrama de Red
 
 ```mermaid
 graph TB
@@ -49,9 +86,9 @@ graph TB
     BACKEND --> MYSQL
 ```
 
-## Flujo de Requests
+### Flujo de Requests
 
-### Frontend (/)
+#### Frontend (/)
 ```mermaid
 sequenceDiagram
     Usuario->>NGINX: GET /
@@ -60,7 +97,7 @@ sequenceDiagram
     NGINX-->>Usuario: Respuesta
 ```
 
-### API (/api/)
+#### API (/api/)
 ```mermaid
 sequenceDiagram
     Usuario->>NGINX: GET /api/users
@@ -71,28 +108,69 @@ sequenceDiagram
     NGINX-->>Usuario: Respuesta
 ```
 
-## Contenedores por Red
+### Flujo de Autenticación (Google OAuth2)
 
-| Red | Contenedores |
-|-----|-------------|
-| **pime-network** | nginx, frontend, backend, mysql |
+```mermaid
+sequenceDiagram
+    Usuario->>Frontend: Click "Login con Google"
+    Frontend->>Backend: GET /api/auth/oauth2/authorization/google
+    Backend->>Google: Redirect a Google
+    Google->>Usuario: Pantalla de login
+    Usuario->>Google: Autentica
+    Google->>Backend: Callback con código
+    Backend->>Backend: Guarda usuario en BD
+    Backend->>Backend: Genera JWT
+    Backend->>Frontend: Redirect con cookie "token"
+    Frontend->>Backend: GET /api/user/me
+    Backend->>Frontend: Datos del usuario
+    Frontend->>Usuario: Muestra perfil
+```
+
+---
+
+## Endpoints del Backend
+
+| Método | Ruta | Descripción |
+|--------|------|-------------|
+| GET | `/api/auth/oauth2/authorization/google` | Inicia login con Google |
+| GET | `/api/auth/callback/google` | Callback de Google |
+| GET | `/api/user/me` | Obtiene usuario actual (requiere cookie) |
+| POST | `/api/user/logout` | Cierra sesión |
+
+---
 
 ## Aislamiento de Seguridad
 
-| Sistema | Internet | pime-network |
-|---------|:--------:|:------------:|
+| Sistema | Acceso Internet | Red Interna |
+|---------|:---------------:|:-----------:|
 | NGINX | ✅ | ✅ |
 | FRONTEND | ❌ | ✅ |
 | BACKEND | ❌ | ✅ |
 | MYSQL | ❌ | ✅ |
 
-> **MYSQL está aislado de internet** - solo accesible desde la red interna.
+> **MYSQL está completamente aislado de internet** - solo accesible desde la red interna.
 
-## Workflow de Deploy
+---
 
-```mermaid
-graph LR
-    subgraph GitHub Actions
-        N[deploy-nginx.yml] -->|push a main| Deploy[Desplegar Todo]
-    end
+## Desarrollo Local (Opcional)
+
+Si quieres probar localmente antes de subir:
+
+```bash
+# Requiere Docker
+docker compose up --build
+
+# Accede a http://localhost
 ```
+
+Para desarrollo local necesitas crear un archivo `.env` con las credenciales de Google OAuth. Contacta al administrador del proyecto para obtenerlas.
+
+---
+
+## Troubleshooting
+
+| Problema | Solución |
+|----------|----------|
+| Deploy falló | Revisa logs en GitHub Actions |
+| Error 502 en la web | El backend puede estar reiniciando, espera 30 segundos |
+| Login no funciona | Verifica que los secretos de Google estén configurados en GitHub |
