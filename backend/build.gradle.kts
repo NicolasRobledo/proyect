@@ -29,6 +29,8 @@ dependencies {
 	implementation("org.springframework.boot:spring-boot-starter-flyway")
 	implementation("org.springframework.boot:spring-boot-starter-webmvc")
 	implementation("org.springframework.boot:spring-boot-starter-oauth2-client")
+	implementation("org.springframework.boot:spring-boot-starter-oauth2-resource-server")
+	implementation("org.springframework.security:spring-security-oauth2-jose")
 	implementation("org.flywaydb:flyway-mysql")
 	compileOnly("org.projectlombok:lombok")
 	runtimeOnly("com.mysql:mysql-connector-j")
