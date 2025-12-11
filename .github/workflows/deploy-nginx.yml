@@ -37,9 +37,6 @@ jobs:
             # Detener y eliminar nginx viejo
             docker rm -f nginx 2>/dev/null || true
 
-            # Conectar frontend a la red si no está
-            docker network connect public-network frontend 2>/dev/null || true
-
             # Iniciar nginx
             docker run -d \
               --name nginx \
@@ -48,5 +45,9 @@ jobs:
               -p 80:80 \
               -v /root/proyecto-pime/nginx/nginx.conf:/etc/nginx/nginx.conf:ro \
               nginx:alpine
+
+            # Asegurar que todos los servicios estén en public-network (si existen)
+            docker network connect public-network frontend 2>/dev/null || true
+            docker network connect public-network backend 2>/dev/null || true
 
             echo "Nginx desplegado en puerto 80"

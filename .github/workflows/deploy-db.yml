@@ -31,24 +31,30 @@ jobs:
           username: ${{ secrets.VPS_USER }}
           password: ${{ secrets.VPS_PASSWORD }}
           script: |
-            # Crear red de base de datos si no existe
+            # Crear redes si no existen
             docker network create db-network 2>/dev/null || true
 
-            # Eliminar contenedor MySQL viejo si existe (para recrearlo con healthcheck)
-            docker rm -f mysql 2>/dev/null || true
+            # Verificar si MySQL ya está corriendo
+            if docker ps -q -f name=mysql | grep -q .; then
+              echo "MySQL ya está corriendo"
+            else
+              # Eliminar contenedor MySQL viejo si existe pero no corre
+              docker rm -f mysql 2>/dev/null || true
 
-            # Crear contenedor MySQL con healthcheck
-            docker run -d \
-              --name mysql \
-              --network db-network \
-              -e MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }} \
-              -e MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }} \
-              -v mysql_data:/var/lib/mysql \
-              --health-cmd="mysqladmin ping -h localhost" \
-              --health-interval=5s \
-              --health-timeout=3s \
-              --health-retries=30 \
-              mysql:8
+              # Crear contenedor MySQL con healthcheck
+              docker run -d \
+                --name mysql \
+                --network db-network \
+                -e MYSQL_ROOT_PASSWORD=${{ secrets.MYSQL_ROOT_PASSWORD }} \
+                -e MYSQL_DATABASE=${{ secrets.MYSQL_DATABASE }} \
+                -v mysql_data:/var/lib/mysql \
+                --health-cmd="mysqladmin ping -h localhost" \
+                --health-interval=5s \
+                --health-timeout=3s \
+                --health-retries=30 \
+                --restart unless-stopped \
+                mysql:8
+            fi
 
             # Esperar a que MySQL esté healthy
             until [ "$(docker inspect -f '{{.State.Health.Status}}' mysql)" = "healthy" ]; do

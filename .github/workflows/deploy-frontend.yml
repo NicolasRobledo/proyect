@@ -49,4 +49,7 @@ jobs:
               --restart unless-stopped \
               proyecto-pime-frontend
 
+            # Asegurar que nginx esté en public-network (si existe)
+            docker network connect public-network nginx 2>/dev/null || true
+
             echo "Frontend desplegado"

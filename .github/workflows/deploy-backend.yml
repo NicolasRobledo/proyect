@@ -37,6 +37,9 @@ jobs:
             docker network create public-network 2>/dev/null || true
             docker network create db-network 2>/dev/null || true
 
+            # Asegurar que MySQL esté en db-network
+            docker network connect db-network mysql 2>/dev/null || true
+
             # Construir imagen del backend
             docker build -t proyecto-pime-backend ./backend
 
