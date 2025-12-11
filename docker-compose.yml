@@ -3,7 +3,7 @@ services:
     image: mysql:8
     container_name: mysql
     networks:
-      - db-network
+      - pime-network
     environment:
       MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
       MYSQL_DATABASE: ${MYSQL_DATABASE}
@@ -14,8 +14,7 @@ services:
     build: ./backend
     container_name: backend
     networks:
-      - public-network
-      - db-network
+      - pime-network
     depends_on:
       - mysql
     environment:
@@ -29,13 +28,13 @@ services:
     build: ./frontend
     container_name: frontend
     networks:
-      - public-network
+      - pime-network
 
   nginx:
     image: nginx:alpine
     container_name: nginx
     networks:
-      - public-network
+      - pime-network
     ports:
       - "80:80"
       - "443:443"
@@ -46,11 +45,8 @@ services:
       - frontend
 
 networks:
-  public-network:
-    name: public-network
-    driver: bridge
-  db-network:
-    name: db-network
+  pime-network:
+    name: pime-network
     driver: bridge
 
 volumes:
