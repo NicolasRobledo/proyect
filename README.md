@@ -87,29 +87,32 @@ sequenceDiagram
 
 ```
 proyecto-pime/
-├── backend/
-│   ├── src/main/resources/
-│   │   ├── application.yml            # Config común
-│   │   ├── application-dev.yml        # Auth simulada + DB local
-│   │   └── application-prod.yml       # Google OAuth + DB prod
-│   ├── Dockerfile
-│   └── build.gradle.kts
-│
-├── frontend/
+├── backend/                        # Spring Boot + Java 21
 │   ├── src/
+│   │   ├── main/java/              # Código fuente
+│   │   ├── main/resources/         # Configuración
+│   │   └── test/                   # Tests
+│   ├── build.gradle.kts
+│   └── gradlew
+│
+├── frontend/                       # React + Vite
+│   ├── src/
+│   ├── public/
 │   ├── package.json
-│   └── Dockerfile
+│   └── vite.config.js
 │
-├── database/
-│   └── migrations/
-│
-├── nginx/
-│   └── nginx.conf
-│
-├── docker-compose.yml              # Producción completa
+├── docker-compose.yml              # Producción
 ├── docker-compose.dev.yml          # Para frontend devs
 │
 └── .github/workflows/
-    ├── deploy-prod.yml             # Deploy a VPS
     └── publish-dev-image.yml       # Publica imagen dev a Docker Hub
 ```
+
+## Stack Tecnológico
+
+| Capa | Tecnología |
+|------|------------|
+| Frontend | React + Vite |
+| Backend | Spring Boot 3.4 + Java 21 |
+| Database | MySQL 8 |
+| Auth | OAuth2 (Google) + JWT |
