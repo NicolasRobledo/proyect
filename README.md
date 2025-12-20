@@ -27,16 +27,9 @@ graph TB
         UD[Código Frontend] -->|fetch API| BD
     end
 
-    subgraph HUB[" Docker Hub "]
-        DH[pime-backend:dev]
-    end
-
-    DH -.->|docker pull| DOCKER
-
     style PROD fill:#1a202c,stroke:#2d3748,color:#fff
     style DEV fill:#1a202c,stroke:#2d3748,color:#fff
     style DOCKER fill:#1a4d7c,stroke:#2980b9,color:#fff
-    style HUB fill:#2496ed,stroke:#1a7bb9,color:#fff
     style GP fill:#c27c1a,stroke:#a66315,color:#fff
     style SA fill:#27ae60,stroke:#1e8449,color:#fff
 ```
