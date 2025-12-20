@@ -6,31 +6,39 @@ Sistema de e-commerce moderno con arquitectura basada en perfiles de entorno, pe
 
 ```mermaid
 graph TB
-    subgraph "Profile: PROD"
+    subgraph PROD[" ☁️ PRODUCCIÓN "]
         direction TB
         UP[Usuario] --> NP[Nginx]
         NP --> FP[Frontend]
         NP --> BP[Backend]
-        BP --> DBP[(MySQL Prod)]
+        BP --> DBP[(MySQL)]
         BP <--> GP[Google OAuth]
     end
 
-    subgraph "Profile: DEV"
+    subgraph DEV[" 🧑‍💻 DESARROLLO - Frontend Developer "]
         direction TB
-        UD[Frontend Dev] --> BD[Backend Dev]
-        BD --> DBD[(MySQL Dev<br/>vacía)]
-        BD --> SA[Auth Simulada<br/>/api/dev/login]
+        subgraph DOCKER[" 🐳 Imagen Docker "]
+            BD[Backend Real]
+            DBD[(MySQL vacía)]
+            SA[Auth Simulada]
+            BD --> DBD
+            BD --> SA
+        end
+        UD[Código Frontend] -->|fetch API| BD
     end
 
-    subgraph "Docker Hub"
+    subgraph HUB[" Docker Hub "]
         DH[pime-backend:dev]
     end
 
-    DH -.->|docker pull| BD
+    DH -.->|docker pull| DOCKER
 
-    style GP fill:#c27c1a
-    style SA fill:#27ae60
-    style DH fill:#2496ed
+    style PROD fill:#1a202c,stroke:#2d3748,color:#fff
+    style DEV fill:#1a202c,stroke:#2d3748,color:#fff
+    style DOCKER fill:#1a4d7c,stroke:#2980b9,color:#fff
+    style HUB fill:#2496ed,stroke:#1a7bb9,color:#fff
+    style GP fill:#c27c1a,stroke:#a66315,color:#fff
+    style SA fill:#27ae60,stroke:#1e8449,color:#fff
 ```
 
 ## Perfiles de Entorno
