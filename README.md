@@ -2,6 +2,20 @@
 
 Sistema de e-commerce moderno con arquitectura basada en perfiles de entorno, permitiendo desarrollo independiente de frontend y backend.
 
+## Autenticación Simulada
+
+Para desarrollo y testing, se incluye una simulación de Google OAuth 2.0 con una tabla en la base de datos.
+
+### Endpoint de Simulación
+- **POST** `/api/auth/simulate/login`: Simula login con email y nombre. Devuelve JWT y datos del usuario.
+  - Body: `{"email": "user@example.com", "name": "User Name"}`
+  - Respuesta: `{"token": "jwt...", "user": {...}}`
+
+- **GET** `/api/auth/simulate/user?email=user@example.com`: Obtiene datos del usuario por email.
+
+### Tabla de Base de Datos
+- `simulated_oauth_users`: Almacena usuarios simulados con email, nombre, google_id simulado, etc.
+
 ## Arquitectura por Perfiles
 
 ```mermaid
