@@ -145,29 +145,34 @@ flowchart TB
 
 ### ¿Qué obtienes?
 
-```
-Un solo comando → Backend real + Base de datos → Todo en tu máquina
-```
-
 ```mermaid
-graph LR
-    subgraph "Tu máquina local"
-        DC[docker compose up] --> B[Backend Real<br/>localhost:8080]
-        DC --> DB[(MySQL<br/>vacía)]
-        B --> DB
+graph TB
+    subgraph FD[" 🧑‍💻 Frontend Developer "]
+        subgraph LOCAL[" 💻 Tu máquina local "]
+            subgraph DOCKER[" 🐳 Imagen Docker "]
+                BE[Backend Real<br/>Spring Boot + Auth Simulada]
+                DB[(MySQL vacía)]
+                BE --> DB
+            end
+        end
+        CODE[Tu código frontend<br/>npm run dev]
+        CODE -->|fetch API| BE
     end
 
-    subgraph "Docker Hub"
-        IMG[pime-backend:dev]
-    end
-
-    IMG -.->|se descarga<br/>automáticamente| B
-
-    style IMG fill:#2496ed
-    style B fill:#27ae60
+    style DOCKER fill:#1a4d7c,stroke:#2980b9,color:#fff
+    style LOCAL fill:#2d3748,stroke:#4a5568,color:#fff
+    style FD fill:#1a202c,stroke:#2d3748,color:#fff
+    style BE fill:#27ae60,stroke:#1e8449,color:#fff
+    style DB fill:#8e44ad,stroke:#6c3483,color:#fff
+    style CODE fill:#e67e22,stroke:#d35400,color:#fff
 ```
 
-El backend que usas **es el mismo código de producción**, solo que configurado con auth simulada. No es un mock, es el backend real.
+**Un comando y listo:**
+```bash
+docker compose -f docker-compose.dev.yml up
+```
+
+El backend dentro de la imagen **es el mismo código de producción**, solo configurado con auth simulada.
 
 ### Requisitos
 - Docker & Docker Compose (nada más)
