@@ -114,32 +114,6 @@ proyecto-pime/
     └── publish-dev-image.yml       # Publica imagen dev a Docker Hub
 ```
 
-## Flujo de Desarrollo
-
-```mermaid
-flowchart TB
-    subgraph "Backend Developer"
-        BD1[Corre Spring Boot local]
-        BD2[./gradlew bootRun]
-        BD1 --> BD2
-    end
-
-    subgraph "Frontend Developer"
-        FD1[docker compose -f docker-compose.dev.yml up]
-        FD2[Tiene backend + DB listos]
-        FD3[npm run dev]
-        FD1 --> FD2 --> FD3
-    end
-
-    subgraph "Docker Hub"
-        DH[tuusuario/pime-backend:dev]
-    end
-
-    DH -.->|pull automático| FD1
-
-    style DH fill:#2496ed
-```
-
 ## Guía para Frontend Developers
 
 > **El backend viene incluido.** No necesitas instalar Java, configurar bases de datos, ni entender el backend. Solo Docker.
