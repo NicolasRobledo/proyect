@@ -141,25 +141,54 @@ flowchart TB
 
 ## Guía para Frontend Developers
 
-### Requisitos
-- Docker & Docker Compose
+> **El backend viene incluido.** No necesitas instalar Java, configurar bases de datos, ni entender el backend. Solo Docker.
 
-### Setup (una sola vez)
+### ¿Qué obtienes?
 
-```bash
-git clone https://github.com/NicolasRobledo/proyect.git
-cd proyect
+```
+Un solo comando → Backend real + Base de datos → Todo en tu máquina
 ```
 
-### Iniciar entorno de desarrollo
+```mermaid
+graph LR
+    subgraph "Tu máquina local"
+        DC[docker compose up] --> B[Backend Real<br/>localhost:8080]
+        DC --> DB[(MySQL<br/>vacía)]
+        B --> DB
+    end
+
+    subgraph "Docker Hub"
+        IMG[pime-backend:dev]
+    end
+
+    IMG -.->|se descarga<br/>automáticamente| B
+
+    style IMG fill:#2496ed
+    style B fill:#27ae60
+```
+
+El backend que usas **es el mismo código de producción**, solo que configurado con auth simulada. No es un mock, es el backend real.
+
+### Requisitos
+- Docker & Docker Compose (nada más)
+
+### Setup
 
 ```bash
+# 1. Clonar repo
+git clone https://github.com/NicolasRobledo/proyect.git
+cd proyect
+
+# 2. Levantar backend + base de datos
 docker compose -f docker-compose.dev.yml up
 ```
 
-Esto levanta:
-- Backend en `http://localhost:8080` (imagen de Docker Hub)
-- MySQL vacía (datos de prueba)
+**Eso es todo.** Ahora tienes:
+
+| Servicio | URL | Descripción |
+|----------|-----|-------------|
+| Backend API | `http://localhost:8080` | Backend real con auth simulada |
+| MySQL | `localhost:3306` | Base de datos vacía |
 
 ### Login simulado (sin Google)
 
