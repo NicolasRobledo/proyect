@@ -1,61 +1,75 @@
 # PIME - Plataforma de E-commerce
 
-Sistema de e-commerce moderno construido con arquitectura de microservicios, autenticación OAuth2/JWT y despliegue containerizado.
+Sistema de e-commerce moderno con arquitectura basada en perfiles de entorno, permitiendo desarrollo independiente de frontend y backend.
 
-## Arquitectura del Sistema
+## Arquitectura por Perfiles
 
 ```mermaid
 graph TB
-    subgraph Internet
-        U[Usuario]
+    subgraph "Profile: PROD"
+        direction TB
+        UP[Usuario] --> NP[Nginx]
+        NP --> FP[Frontend]
+        NP --> BP[Backend]
+        BP --> DBP[(MySQL Prod)]
+        BP <--> GP[Google OAuth]
     end
 
-    subgraph Docker Network
-        subgraph Gateway
-            N[NGINX<br/>Puerto 80/443]
-        end
-
-        subgraph Services
-            F[Frontend<br/>Astro + React<br/>:3000]
-            B[Backend<br/>Spring Boot<br/>:8080]
-        end
-
-        subgraph Data
-            DB[(MySQL 8<br/>:3306)]
-        end
+    subgraph "Profile: DEV"
+        direction TB
+        UD[Frontend Dev] --> BD[Backend Dev]
+        BD --> DBD[(MySQL Dev<br/>vacía)]
+        BD --> SA[Auth Simulada<br/>/api/dev/login]
     end
 
-    subgraph External
-        G[Google OAuth2]
+    subgraph "Docker Hub"
+        DH[pime-backend:dev]
     end
 
-    U -->|HTTP/HTTPS| N
-    N -->|"/*"| F
-    N -->|"/api/*"| B
-    B --> DB
-    B <-->|OAuth2| G
+    DH -.->|docker pull| BD
 
-    style N fill:#2d5016,stroke:#4a7c23
-    style F fill:#1a4d7c,stroke:#2980b9
-    style B fill:#7c1a4d,stroke:#c0392b
-    style DB fill:#4a4a7c,stroke:#8e44ad
-    style G fill:#c27c1a,stroke:#e67e22
+    style GP fill:#c27c1a
+    style SA fill:#27ae60
+    style DH fill:#2496ed
 ```
 
-## Flujo de Autenticación
+## Perfiles de Entorno
+
+| Profile | Auth | Base de Datos | Uso |
+|---------|------|---------------|-----|
+| `prod` | Google OAuth real | MySQL producción | Deploy en VPS |
+| `dev` | Auth simulada | MySQL local vacía | Frontend developers |
+
+### Profile DEV (para frontend developers)
+
+```mermaid
+sequenceDiagram
+    participant FD as Frontend Dev
+    participant B as Backend (dev)
+    participant DB as MySQL Dev
+
+    Note over FD: docker compose up
+    FD->>B: POST /api/dev/login
+    Note right of B: No requiere Google
+    B->>B: Genera JWT fake
+    B->>FD: { token, user }
+    FD->>B: GET /api/user/me
+    B->>FD: Datos del usuario
+    Note over FD: Puede desarrollar<br/>sin OAuth real
+```
+
+### Profile PROD (producción)
 
 ```mermaid
 sequenceDiagram
     participant U as Usuario
     participant F as Frontend
-    participant N as Nginx
     participant B as Backend
     participant G as Google
     participant DB as MySQL
 
     U->>F: Click "Login con Google"
-    F->>N: GET /api/auth/oauth2/authorization/google
-    N->>B: Proxy request
+    F->>B: GET /api/auth/oauth2/authorization/google
     B->>G: Redirect a Google OAuth
     G->>U: Pantalla de login
     U->>G: Credenciales
@@ -63,15 +77,213 @@ sequenceDiagram
     B->>G: Intercambio por tokens
     G->>B: Access token + User info
     B->>DB: Crear/Actualizar usuario
-    DB->>B: Usuario guardado
     B->>B: Generar JWT
-    B->>F: Set Cookie (JWT) + Redirect /
-    F->>N: GET /api/user/me
-    N->>B: Proxy con cookie
-    B->>B: Validar JWT
-    B->>F: Datos del usuario
+    B->>F: Set Cookie (JWT) + Redirect
     F->>U: Mostrar perfil
 ```
+
+## Estructura del Proyecto
+
+```
+proyecto-pime/
+├── backend/
+│   ├── src/main/resources/
+│   │   ├── application.yml            # Config común
+│   │   ├── application-dev.yml        # Auth simulada + DB local
+│   │   └── application-prod.yml       # Google OAuth + DB prod
+│   ├── Dockerfile
+│   └── build.gradle.kts
+│
+├── frontend/
+│   ├── src/
+│   ├── package.json
+│   └── Dockerfile
+│
+├── database/
+│   └── migrations/
+│
+├── nginx/
+│   └── nginx.conf
+│
+├── docker-compose.yml              # Producción completa
+├── docker-compose.dev.yml          # Para frontend devs
+│
+└── .github/workflows/
+    ├── deploy-prod.yml             # Deploy a VPS
+    └── publish-dev-image.yml       # Publica imagen dev a Docker Hub
+```
+
+## Flujo de Desarrollo
+
+```mermaid
+flowchart TB
+    subgraph "Backend Developer"
+        BD1[Corre Spring Boot local]
+        BD2[./gradlew bootRun]
+        BD1 --> BD2
+    end
+
+    subgraph "Frontend Developer"
+        FD1[docker compose -f docker-compose.dev.yml up]
+        FD2[Tiene backend + DB listos]
+        FD3[npm run dev]
+        FD1 --> FD2 --> FD3
+    end
+
+    subgraph "Docker Hub"
+        DH[tuusuario/pime-backend:dev]
+    end
+
+    DH -.->|pull automático| FD1
+
+    style DH fill:#2496ed
+```
+
+## Guía para Frontend Developers
+
+### Requisitos
+- Docker & Docker Compose
+
+### Setup (una sola vez)
+
+```bash
+git clone https://github.com/NicolasRobledo/proyect.git
+cd proyect
+```
+
+### Iniciar entorno de desarrollo
+
+```bash
+docker compose -f docker-compose.dev.yml up
+```
+
+Esto levanta:
+- Backend en `http://localhost:8080` (imagen de Docker Hub)
+- MySQL vacía (datos de prueba)
+
+### Login simulado (sin Google)
+
+```bash
+# Obtener token de desarrollo
+curl -X POST http://localhost:8080/api/dev/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "test@example.com", "nombre": "Usuario Test"}'
+```
+
+Respuesta:
+```json
+{
+  "token": "eyJhbGciOiJIUzI1NiIs...",
+  "user": {
+    "id": 1,
+    "email": "test@example.com",
+    "nombre": "Usuario Test"
+  }
+}
+```
+
+### API Endpoints
+
+| Método | Endpoint | Descripción | Disponible en |
+|--------|----------|-------------|---------------|
+| POST | `/api/dev/login` | Login simulado | Solo DEV |
+| GET | `/api/auth/oauth2/authorization/google` | Login con Google | Solo PROD |
+| GET | `/api/user/me` | Usuario actual | DEV + PROD |
+| POST | `/api/user/logout` | Cerrar sesión | DEV + PROD |
+
+## Guía para Backend Developers
+
+### Requisitos
+- Java 21
+- Docker (solo para MySQL)
+
+### Setup
+
+```bash
+# Levantar solo la base de datos
+docker compose -f docker-compose.dev.yml up db
+
+# Correr backend con hot reload
+cd backend
+./gradlew bootRun --args='--spring.profiles.active=dev'
+```
+
+### Configuración de perfiles
+
+**application-dev.yml**
+```yaml
+spring:
+  datasource:
+    url: jdbc:mysql://localhost:3306/pime_dev
+  security:
+    # Auth simulada habilitada
+
+app:
+  auth:
+    dev-mode: true  # Habilita /api/dev/login
+```
+
+**application-prod.yml**
+```yaml
+spring:
+  datasource:
+    url: jdbc:mysql://${DB_HOST}:3306/${DB_NAME}
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID}
+            client-secret: ${GOOGLE_CLIENT_SECRET}
+
+app:
+  auth:
+    dev-mode: false  # Deshabilita /api/dev/login
+```
+
+## CI/CD Pipeline
+
+```mermaid
+flowchart LR
+    subgraph "Push a main"
+        P[Push]
+    end
+
+    subgraph "GitHub Actions"
+        P --> W1[publish-dev-image.yml]
+        P --> W2[deploy-prod.yml]
+    end
+
+    subgraph "Docker Hub"
+        W1 --> |build + push| DH[pime-backend:dev]
+    end
+
+    subgraph "VPS Producción"
+        W2 --> |deploy| VPS[Contenedores Prod]
+    end
+
+    style DH fill:#2496ed
+    style VPS fill:#27ae60
+```
+
+### Workflows
+
+| Workflow | Trigger | Acción |
+|----------|---------|--------|
+| `publish-dev-image.yml` | Push a `main` en `backend/` | Construye y publica `pime-backend:dev` a Docker Hub |
+| `deploy-prod.yml` | Push a `main` | Deploy completo a VPS |
+
+### Secretos de GitHub Requeridos
+
+| Secret | Uso |
+|--------|-----|
+| `DOCKERHUB_USERNAME` | Publicar imagen dev |
+| `DOCKERHUB_TOKEN` | Publicar imagen dev |
+| `VPS_HOST` | Deploy producción |
+| `VPS_USER` | Deploy producción |
+| `VPS_PASSWORD` | Deploy producción |
+| `GOOGLE_CLIENT_ID` | OAuth producción |
+| `GOOGLE_CLIENT_SECRET` | OAuth producción |
 
 ## Modelo de Datos
 
@@ -83,10 +295,7 @@ erDiagram
         varchar email
         boolean email_verified
         varchar nombre
-        varchar nombre_pila
-        varchar apellido
         varchar foto_url
-        varchar locale
         timestamp created_at
         timestamp updated_at
     }
@@ -99,7 +308,6 @@ erDiagram
         int stock
         varchar imagen_url
         bigint categoria_id FK
-        timestamp created_at
     }
 
     CATEGORIAS {
@@ -132,202 +340,6 @@ erDiagram
 
 ## Stack Tecnológico
 
-```mermaid
-graph LR
-    subgraph Frontend
-        A[Astro 5.0] --> R[React 18]
-        R --> TS[TypeScript]
-    end
-
-    subgraph Backend
-        SB[Spring Boot 4.0] --> J[Java 21]
-        SB --> SEC[Spring Security]
-        SEC --> OAuth[OAuth2 Client]
-        SEC --> JWT[JWT]
-        SB --> JPA[Spring Data JPA]
-    end
-
-    subgraph Database
-        MY[MySQL 8]
-        FW[Flyway]
-    end
-
-    subgraph Infrastructure
-        D[Docker]
-        DC[Docker Compose]
-        NG[Nginx]
-        GH[GitHub Actions]
-    end
-
-    style A fill:#ff5d01
-    style SB fill:#6db33f
-    style MY fill:#4479a1
-    style D fill:#2496ed
-```
-
-## Estructura del Proyecto
-
-```
-proyecto-pime/
-├── backend/                    # API REST (Spring Boot)
-│   ├── src/main/java/
-│   │   └── com/example/demo/
-│   │       ├── config/         # Configuración de seguridad
-│   │       ├── controller/     # Endpoints REST
-│   │       ├── entity/         # Entidades JPA
-│   │       ├── repository/     # Repositorios
-│   │       └── service/        # Lógica de negocio
-│   ├── src/main/resources/
-│   │   └── application.yaml
-│   ├── build.gradle.kts
-│   └── Dockerfile
-│
-├── frontend/                   # Web UI (Astro + React)
-│   ├── src/
-│   │   ├── components/         # Componentes React
-│   │   └── pages/              # Páginas Astro
-│   ├── package.json
-│   └── Dockerfile
-│
-├── nginx/                      # Proxy reverso
-│   └── nginx.conf
-│
-├── database/                   # Migraciones SQL
-│   └── migrations/
-│
-├── .github/workflows/          # CI/CD
-│   ├── deploy-backend.yml
-│   ├── deploy-frontend.yml
-│   ├── deploy-db.yml
-│   └── deploy-nginx.yml
-│
-└── docker-compose.yml
-```
-
-## API Endpoints
-
-| Método | Endpoint | Descripción | Auth |
-|--------|----------|-------------|------|
-| GET | `/api/auth/oauth2/authorization/google` | Iniciar login con Google | No |
-| GET | `/api/auth/callback/google` | Callback de OAuth2 | No |
-| GET | `/api/user/me` | Obtener usuario actual | JWT |
-| POST | `/api/user/logout` | Cerrar sesión | JWT |
-
-### Respuesta `/api/user/me`
-
-```json
-{
-  "id": 1,
-  "email": "usuario@gmail.com",
-  "nombre": "Juan Pérez",
-  "nombrePila": "Juan",
-  "apellido": "Pérez",
-  "fotoUrl": "https://lh3.googleusercontent.com/..."
-}
-```
-
-## Instalación
-
-### Requisitos
-
-- Docker & Docker Compose
-- Cuenta de Google Cloud (para OAuth2)
-
-### Variables de Entorno
-
-Crear archivo `.env` en la raíz:
-
-```env
-# Base de Datos
-MYSQL_ROOT_PASSWORD=tu_password_seguro
-MYSQL_DATABASE=pime
-
-# Google OAuth2
-GOOGLE_CLIENT_ID=tu_client_id.apps.googleusercontent.com
-GOOGLE_CLIENT_SECRET=tu_client_secret
-
-# JWT
-JWT_SECRET=tu_clave_secreta_muy_larga_y_segura
-```
-
-### Ejecutar Localmente
-
-```bash
-# Clonar repositorio
-git clone https://github.com/tu-usuario/proyecto-pime.git
-cd proyecto-pime
-
-# Iniciar servicios
-docker-compose up -d
-
-# Ver logs
-docker-compose logs -f
-```
-
-### Acceso
-
-- **Aplicación**: http://localhost
-- **API**: http://localhost/api
-
-## Deployment
-
-```mermaid
-flowchart LR
-    subgraph GitHub
-        PR[Push/PR] --> GHA[GitHub Actions]
-    end
-
-    subgraph Workflows
-        GHA --> |backend/**| WB[deploy-backend.yml]
-        GHA --> |frontend/**| WF[deploy-frontend.yml]
-        GHA --> |database/**| WD[deploy-db.yml]
-        GHA --> |nginx/**| WN[deploy-nginx.yml]
-    end
-
-    subgraph VPS
-        WB --> |SCP + SSH| CB[Build Backend]
-        WF --> |SCP + SSH| CF[Build Frontend]
-        WD --> |SSH| CD[Run Migrations]
-        WN --> |SCP + SSH| CN[Reload Nginx]
-
-        CB --> DC[Docker Container]
-        CF --> DC
-        CN --> DC
-    end
-
-    style GHA fill:#2088ff
-    style DC fill:#2496ed
-```
-
-El despliegue es automático mediante GitHub Actions:
-
-1. Cada push a `main` dispara el workflow correspondiente
-2. Los archivos se copian al VPS via SCP
-3. Se reconstruye la imagen Docker
-4. Se reinicia el contenedor
-
-### Secretos de GitHub Requeridos
-
-| Secret | Descripción |
-|--------|-------------|
-| `VPS_HOST` | IP o dominio del servidor |
-| `VPS_USER` | Usuario SSH |
-| `VPS_PASSWORD` | Contraseña SSH |
-| `MYSQL_ROOT_PASSWORD` | Contraseña de MySQL |
-| `MYSQL_DATABASE` | Nombre de la base de datos |
-| `GOOGLE_CLIENT_ID` | ID de OAuth2 de Google |
-| `GOOGLE_CLIENT_SECRET` | Secret de OAuth2 |
-
-## Seguridad
-
-- **Autenticación**: OAuth2 con Google + JWT
-- **Base de datos**: Aislada en red Docker interna
-- **Proxy reverso**: Nginx maneja SSL/TLS
-- **Tokens**: JWT con expiración de 24 horas
-- **Migraciones**: Flyway para versionado de esquema
-
-## Tecnologías
-
 | Capa | Tecnología | Versión |
 |------|------------|---------|
 | Frontend | Astro | 5.0 |
@@ -337,7 +349,66 @@ El despliegue es automático mediante GitHub Actions:
 | Database | MySQL | 8 |
 | Proxy | Nginx | Alpine |
 | Container | Docker | Latest |
+| Registry | Docker Hub | - |
 | CI/CD | GitHub Actions | - |
+
+## Archivos Docker Compose
+
+### docker-compose.dev.yml (Frontend developers)
+
+```yaml
+services:
+  backend:
+    image: tuusuario/pime-backend:dev
+    ports:
+      - "8080:8080"
+    environment:
+      - SPRING_PROFILES_ACTIVE=dev
+    depends_on:
+      - db
+
+  db:
+    image: mysql:8
+    environment:
+      - MYSQL_ROOT_PASSWORD=dev
+      - MYSQL_DATABASE=pime_dev
+    ports:
+      - "3306:3306"
+```
+
+### docker-compose.yml (Producción)
+
+```yaml
+services:
+  nginx:
+    image: nginx:alpine
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      - frontend
+      - backend
+
+  frontend:
+    build: ./frontend
+
+  backend:
+    build: ./backend
+    environment:
+      - SPRING_PROFILES_ACTIVE=prod
+      - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID}
+      - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET}
+    depends_on:
+      - db
+
+  db:
+    image: mysql:8
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+volumes:
+  mysql_data:
+```
 
 ## Licencia
 
